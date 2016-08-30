@@ -1,0 +1,27 @@
+{
+  "name": "mpdcast",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rektide/mpdcast.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rektide/mpdcast/issues"
+  },
+  "homepage": "https://github.com/rektide/mpdcast#readme",
+  "dependencies": {
+    "es6-promisify": "^4.1.0",
+    "mpd": "^1.3.0",
+    "node-fetch": "^1.6.0",
+    "playlist-parser": "0.0.12",
+    "yargs": "^5.0.0"
+  }
+}
