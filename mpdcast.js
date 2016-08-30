@@ -22,11 +22,18 @@ function getArgs( argv){
 			describe: "add to this playlist (defaults to current playing)",
 			group: "mpdcast",
 		})
-		.option( "max", {
-			alias: "m",
+		.option( "num", {
+			alias: "n",
 			describe: "limit maximum number of entries to enqueue",
 			group: "mpdcast",
 			number: true,
+		})
+		.option( "start", {
+			alias: "s",
+			default: true,
+			describe: "start this track now",
+			group: "mpdcast",
+			boolean: true,
 		})
 
 		// mpd group
@@ -64,41 +71,48 @@ function getArgs( argv){
 /**
  * Load a file or url. If that file has a playlist suffix, recursively load it's entries.
  */
-function load(entry, verbose){
-	var ext= path.extname( entry).toLowerCase()
+function load(entry, args){
+	var ext= path.extname( entry).toLowerCase().substring(1)
 	var q= ext.indexOf( "?")
-	if( q){
-		ext= ext.substring(1, q)
+	if( q != -1){
+		ext= ext.substring(0, q)
 	}
 	var playlist
 	if( ext == "pls"){
-		playlist= loadPlaylist(entry, ext, verbose)
+		playlist= loadPlaylist(entry, ext, args)
 	}else if( ext == "m3u"){
-		playlist= loadPlaylist(entry, ext, verbose)
+		playlist= loadPlaylist(entry, ext, args)
 	}else if(ext == "asx"){
-		playlist= loadPlaylist(entry, ext, verbose)
+		playlist= loadPlaylist(entry, ext, args)
+	}
+	if(playlist){
+		return playlist
 	}else{
-		if( verbose){
+		if( args.verbose){
 			console.log( "have file")
 		}
 		return Promise.resolve([{
 			file: entry
 		}])
 	}
-	return playlist
 }
 
-function loadPlaylist(entry, ext, verbose){
-	if( verbose){
+function loadPlaylist(entry, ext, args){
+	if( args.verbose){
 		console.log( "loading playlist", entry)
 	}
-	return loadData( entry, verbose).then(function( file){
+	return loadData( entry, args.verbose).then(function( file){
 		return file.text()
 	}).then(function( text){
-		if( verbose){
+		if( args.verbose){
 			console.log("parsing playlist", entry)
 		}
-		return playlistParser[ ext.toUpperCase()].parse( text)
+		var full= playlistParser[ ext.toUpperCase()].parse( text)
+		if( args.verbose&& full.length> args.num){
+			console.log( "limiting number of args")
+			full= full.slice(0, args.num)
+		}
+		return full
 	})
 }
 
@@ -128,10 +142,31 @@ function loadData( entry, verbose){
 /**
  * Enqueue entries
  */
-function enqueue( entries, client, args){
-	return Promise.all( entries.map(function(){
-		
+function enqueue( entries, sendCommand, args){
+	return Promise.all( entries.map(function(entry){
+		var all= []
+		if( args.playlist){
+			if( args.verbose){
+				console.log("adding", entry.file, "to playlist", args.playlist)
+			}
+			var playlistadd= sendCommand( "playlistadd", [ args.playlist, entry.file])
+			all.push(playlistadd)
+		}
+		if( !args.playlist|| args.start){
+			if( args.verbose){
+				console.log("adding", entry.file, "to current playlist")
+			}
+			var id= sendCommand( "addid", [ entry.file]).then(mpd.parseKeyValueMessage)
+			all.push(id)
+		}
+		return Promise.all(all)
 	}))
+}
+
+function play( queued, sendCommand, verbose){
+	var last= queued[ queued.length- 1]
+	var lastId= Number.parseInt(last[1].Id)
+	sendCommand("playid", [lastId])
 }
 
 function client( args){
@@ -154,20 +189,57 @@ function uncaught(){
 
 function main(){
 	uncaught()
+
+	// marshal args
 	var args = getArgs()
 	var entries= args._.slice( 2)
 	if( args.verbose){
 		console.log( "evaluating arguments")
 		console.log( entries.join("\n"))
 	}
+
+	// load all arguments & flatten
 	var loaded= entries.map(function( entry){
-		return load(entry, args.verbose)
+		return load(entry, args)
 	})
-	return Promise.all( loaded).then(function( entries){
-		var flat = Array.prototype.concat.apply( [], entries)
-		return client( args).then(function( client){
-			return enqueue( flat, client, args)
+	var flat= Promise.all( loaded).then(function( entries){
+		return Array.prototype.concat.apply( [], entries)
+	})
+
+	// start making connection once we have the flat list
+	var conn= flat.then(function(){
+		return client( args)
+	})
+	// prepare a disconnect for client
+	var disconnect= function(){
+		conn.then(function( conn){
+			if( args.verbose){
+				console.log( "disconnect")
+			}
+			conn.socket.end()
 		})
+	}
+	// prepare a send
+	var sendCommand= function( msg, params){
+		return conn.then(function( client){
+			return promisify( client.sendCommand, client)( mpd.cmd( msg, params))
+		})
+	}
+
+	return flat.then(function( flat){
+		// queue
+		return enqueue( flat, sendCommand, args)
+	}).then(function( queued){
+		// play
+		if( args.start){
+			if( args.verbose){
+				console.log("playing")
+			}
+			play( queued, sendCommand)
+		}
+	}).then( disconnect, function(err){
+		disconnect()
+		throw err
 	})
 }
 
