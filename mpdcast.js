@@ -165,7 +165,8 @@ function enqueue( entries, sendCommand, args){
 
 function play( queued, sendCommand, verbose){
 	var last= queued[ queued.length- 1]
-	var lastId= Number.parseInt(last[1].Id)
+	last= last[last.length -1]
+	var lastId= Number.parseInt(last.Id)
 	sendCommand("playid", [lastId])
 }
 
