@@ -177,11 +177,11 @@ function client( args){
 		host: args.host,
 		port: args.port,
 	})
-	var defer= defer()
+	var d= defer()
 	client.on( "ready", function(){
-		defer.resolve( client)
+		d.resolve( client)
 	})
-	return defer.promise
+	return d.promise
 }
 
 function uncaught(){
