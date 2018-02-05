@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 "use strict"
 
+
 var
+  defer= require( "p-defer"),
   fetch= require( "node-fetch"),
-  fs= require("fs"),
+  fs= require( "fs"),
   mpd= require( "mpd"),
-  path= require("path"),
-  playlistParser= require("playlist-parser"),
-  promisify= require("es6-promisify"),
+  path= require( "path"),
+  playlistParser= require( "playlist-parser"),
+  promisify= require( "es6-promisify"),
   yargs= require( "yargs")
 
 function getArgs( argv){
@@ -175,7 +177,7 @@ function client( args){
 		host: args.host,
 		port: args.port,
 	})
-	var defer= Promise.defer()
+	var defer= defer()
 	client.on( "ready", function(){
 		defer.resolve( client)
 	})
