@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=mpdcast
+GenericName=MPD Enqueuer
+X-GNOME-FullName=mpdcast
+Comment=Play pls files in mpd
+TryExec=mpdcast
+Exec=mpdcast %U
+Type=Application
+Terminal=false
+Categories=AudioVideo;
