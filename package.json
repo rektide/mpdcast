@@ -1,8 +1,8 @@
 {
 	"name": "mpdcast",
-	"version": "1.0.3",
-	"description": "",
-	"main": "index.js",
+	"version": "1.0.4",
+	"description": "Enqueue shoutcast playlist files into mpd",
+	"main": "mpdcast.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
